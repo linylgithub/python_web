@@ -1,0 +1,14 @@
+[2018-11-20 10:44:40,992] {logger_slow_query.py:46} WARNING - 
+Context:logger_slow_query.py:36 (users)
+SLOW QUERY: INSERT INTO users2 (name) VALUES (%s)
+Parameters: ('\xe8\xb5\xb5\xe5\x9b\x9b',)
+Duration: 0.0335378646851
+
+[2018-11-20 10:44:40,992] {logger_slow_query.py:46} WARNING - 
+Context:logger_slow_query.py:38 (users)
+SLOW QUERY: SELECT users2.id AS users2_id, users2.name AS users2_name 
+FROM users2 
+WHERE users2.id = %s
+Parameters: (1L,)
+Duration: 0.0334079265594
+
