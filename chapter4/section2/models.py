@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding=utf8 -*-
+# -*- coding=utf-8 -*-
 """
 # Author: linyl
 # Created Time : 三 11/21 10:40:26 2018
