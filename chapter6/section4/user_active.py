@@ -43,10 +43,12 @@ def calc_memory():
 
     print 'USED_MEMORY: {}'.format(r.info()['used_memory_human'])
     start = time.time()
+    print datetime.now()
     # 20 * 100000次（100万中选10万）
     gen_records(21, 1000000, 100000)
     print 'COST: {}'.format(time.time() - start)  # 记录花费时间
     print 'USED_MEMORY: {}'.format(r.info()['used_memory_human'])
+    print datetime.now()
 
 if __name__ == '__main__':
     calc_memory()
