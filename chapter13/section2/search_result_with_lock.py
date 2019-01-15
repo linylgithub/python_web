@@ -2,27 +2,44 @@
 # -*- coding=utf-8 -*-
 """
 # Author: linyl
-# Created Time : 日  1/13 11:33:45 2019
-# File Name: search_result.py
+# Created Time : 二  1/15 13:58:57 2019
+# File Name: search_result_with_lock.py
 # Description:
 """
-
 from datetime import datetime
 
-from requests.exceptions import Timeout, ConnectionError
-from gevent import monkey, sleep, GreenletExit
-from gevent.queue import Queue, Empty
+from  requests.exceptions import Timeout, ConnectionError
+from gevent import sleep, monkey, GreenletExit
+from gevent.queue import Queue,Empty
 from gevent.pool import Pool
+try:
+    from gevent.coros import BoundedSemaphore
+except:
+    from gevent.lock import BoundedSemaphore
 monkey.patch_all()
 from pymongo.errors import InvalidBSON
-from mongoengine import NotUniqueError, DoesNotExist
+from mongoengine import NotUniqueError,DoesNotExist
 from bs4 import BeautifulSoup
 
 from utils import fetch
 from models import Proxy, Article, Publisher
 
 SEARCH_URL = 'http://weixin.sogou.com/weixin?query={}&type=2&page={}'
-SEARCH_TEXT = 'JAVA'
+SEARCH_TEXT = 'Python'
+
+sem = BoundedSemaphore(1)
+IN_POOL_TASKS = []
+
+
+def put_new_page(p, queue):
+    global IN_POOL_TASKS
+    sem.acquire()
+    sleep(0)
+    if p not in IN_POOL_TASKS:
+        queue.put(p)
+        IN_POOL_TASKS.append(p)
+    sem.release()
+
 
 def save_search_result(page, queue, retry=0):
     proxy = Proxy.get_random()['address']
@@ -35,7 +52,7 @@ def save_search_result(page, queue, retry=0):
         sleep(5)
         retry += 1
         if retry > 5:
-            queue.put(page)
+            put_new_page(page, queue)
             raise GreenletExit()
         try:
             p = Proxy.objects.get(address=proxy)
@@ -53,13 +70,19 @@ def save_search_result(page, queue, retry=0):
         sleep(5)
         retry += 1
         if retry > 5:
-            queue.put(page)
+            put_new_page(page, queue)
             raise GreenletExit()
         return save_search_result(page, queue, retry)
     articles = results.find_all('li')
     for article in articles:
-        print article
         save_article(article)
+
+    page_container = soup.find(id="pagebar_container")
+    if page_container and u'下一页' in page_container.text:
+        last_page = int(page_container.find_all('a')[-2].text)
+        current_page = int(page_container.find('span').text)
+        for page in range(current_page, last_page + 1):
+            put_new_page(page, queue)
 
 
 def save_article(article_):
@@ -97,7 +120,7 @@ def use_gevent_with_queue():
     pool = Pool(5)
 
     for p in range(1, 7):
-        queue.put(p)
+        put_new_page(p, queue)
 
     while pool.free_count():
         sleep(0.5)
@@ -105,18 +128,6 @@ def use_gevent_with_queue():
 
     pool.join()
 
-def with_file_sp():
-    with open('sp_template.html', 'rb') as f:
-        html = f.read()
-        soup = BeautifulSoup(html, 'lxml')
-        results = soup.find('ul', class_='news-list')
-        articles = results.find_all('li')
-        for article in articles:
-            if article:
-                save_article(article)
-
-
 
 if __name__ == "__main__":
     use_gevent_with_queue()
-
